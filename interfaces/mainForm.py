@@ -4,10 +4,11 @@ import pymongo
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QApplication, QToolBar, \
-    QMessageBox
+    QMessageBox, QScrollArea
 
 from MyEnum.AvailabilityStatus import AvailabilityStatus
-from interfaces.afficherChambre import AfficherRoomMenu
+from interfaces.building_interface.updateBuilding import UpdateBuildingMenu
+from interfaces.room_interface.afficherChambre import AfficherRoomMenu
 from model.Building import Building
 from session.session_manager import get_current_user_id, get_current_user_building_ids
 
@@ -19,11 +20,13 @@ class MainForm(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.confirmation_dialog = None
         self.room_interface = None
         self.layout = None
         self.central_layout = None
         self.central_widget = None
         self.navbar_layout = None
+        self.update_menu = None
         self.setWindowTitle("Gestionnaire de Bâtiments Étudiants")
         self.setGeometry(220, 100, 900, 600)
         self.setStyleSheet("background-color: silver;")
@@ -308,7 +311,15 @@ class MainForm(QWidget):
                      building_dicts]  # Convertir en instances de Building
         if not buildings:
             QMessageBox.information(self, "Info", "Vous n'avez pas de cité pour le moment")
-        buildings_layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        # Créons un widget pour contenir les bâtiments
+        scroll_content = QWidget()
+        scroll_area.setWidget(scroll_content)
+
+        # Utilisons un layout pour les bâtiments
+        buildings_layout = QVBoxLayout(scroll_content)
 
         for i, building in enumerate(buildings):
             # Utiliser directement l'objet building récupéré de la base de données
@@ -321,7 +332,7 @@ class MainForm(QWidget):
             name_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
 
             city_label = QLabel("Ville: " + building.city)
-            city_label.setStyleSheet("color: blue; font-weight: bold; font-size: 18px;")
+            city_label.setStyleSheet("color: blue; font-weight: bold; font-size: 18px; text-transform: uppercase;")
 
             quater_label = QLabel("Quartier: " + building.quarter)
             quater_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
@@ -339,7 +350,7 @@ class MainForm(QWidget):
             # Créer les boutons Modifier et Supprimer
             modifier_button = QPushButton("Modifier")
             modifier_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-            # modifier_button.clicked.connect(self.switchToUpdate)
+            modifier_button.clicked.connect(lambda _, building_id=building.id: self.handle_modify_button(building_id))
             modifier_button.setStyleSheet("""
                 QPushButton {
                     background-color: orange;
@@ -353,10 +364,10 @@ class MainForm(QWidget):
                 }
             """)
 
-            changer_mdp_button = QPushButton("Supprimer")
-            changer_mdp_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-            # changer_mdp_button.clicked.connect(self.switch_to_updatePwd)
-            changer_mdp_button.setStyleSheet("""
+            supprimer_button = QPushButton("Supprimer")
+            supprimer_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            supprimer_button.clicked.connect(lambda _, building_id=building.id: self.confirm_delete_building(building_id))
+            supprimer_button.setStyleSheet("""
                 QPushButton {
                     background-color: gray;
                     color: white;
@@ -390,7 +401,7 @@ class MainForm(QWidget):
 
             # Ajouter les boutons au QHBoxLayout des boutons
             button_layout.addWidget(modifier_button)
-            button_layout.addWidget(changer_mdp_button)
+            button_layout.addWidget(supprimer_button)
             button_layout.addWidget(chambre_button)
 
             # Créer un QVBoxLayout pour la disposition horizontale
@@ -400,7 +411,6 @@ class MainForm(QWidget):
             info_widget = QWidget()
             info_widget.setLayout(info_layout)
             info_widget.setStyleSheet("""
-    ```python
                 QWidget {
                     background-color: #f0f0f0;
                     border: 2px solid #d3d3d3;
@@ -433,7 +443,7 @@ class MainForm(QWidget):
 
             # Ajouter le QWidget du bâtiment au QVBoxLayout des bâtiments
             buildings_layout.addWidget(main_widget)
-
+        self.central_layout.addWidget(scroll_area)
         # Ajouter le QVBoxLayout des bâtiments à la mise en page centrale
         self.central_layout.addLayout(buildings_layout)
 
@@ -498,7 +508,16 @@ class MainForm(QWidget):
 
         if not rooms:
             QMessageBox.information(self, "Info", "Vous n'avez pas de chambre pour le moment")
-        buildings_layout = QVBoxLayout()
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        # Créons un widget pour contenir les bâtiments
+        scroll_content = QWidget()
+        scroll_area.setWidget(scroll_content)
+
+        # Utilisons un layout pour les bâtiments
+        rooms_layout = QVBoxLayout(scroll_content)
 
         for i, room in enumerate(rooms):
             # Utiliser directement l'objet building récupéré de la base de données
@@ -511,7 +530,7 @@ class MainForm(QWidget):
             number_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
 
             price_label = QLabel("Prix: " + room.price + " FCFA")
-            price_label.setStyleSheet("color: blue; font-weight: bold; font-size: 18px;")
+            price_label.setStyleSheet("color: blue; font-weight: bold; font-size: 18px; text-transform: uppercase;")
 
             description_label = QLabel("Description: " + room.description)
             description_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
@@ -636,19 +655,14 @@ class MainForm(QWidget):
                    """)
 
             # Ajouter le QWidget du bâtiment au QVBoxLayout des bâtiments
-            buildings_layout.addWidget(main_widget)
-
+            rooms_layout.addWidget(main_widget)
+        self.central_layout.addWidget(scroll_area)
         # Ajouter le QVBoxLayout des bâtiments à la mise en page centrale
-        self.central_layout.addLayout(buildings_layout)
+        self.central_layout.addLayout(rooms_layout)
 
         # Rafraîchir la mise en page centrale
         self.central_layout.update()
         self.central_widget.update()
-
-    def show_rooms_of_building(self, building_id):
-        # Cette fonction n'est pas implémentée dans votre code d'origine
-        # Vous pouvez ajouter ici le code pour afficher les chambres d'un bâtiment spécifique
-        pass
 
     def clear_central_layout(self):
         # Effacer tous les widgets de la zone centrale
@@ -659,6 +673,42 @@ class MainForm(QWidget):
                 if widget is not None:
                     widget.deleteLater()
 
+    def confirm_delete_building(self, building_id):
+        # Créer la boîte de dialogue de confirmation
+        self.confirmation_dialog = QMessageBox()
+        self.confirmation_dialog.setIcon(QMessageBox.Icon.Question)
+        self.confirmation_dialog.setText("Êtes-vous sûr de vouloir supprimer ce bâtiment ?")
+        self.confirmation_dialog.setWindowTitle("Confirmation de suppression")
+        self.confirmation_dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+
+        # Si l'utilisateur clique sur "Oui", supprimer le bâtiment
+        self.confirmation_dialog.buttonClicked.connect(lambda btn, b=building_id: self.delete_building(b))
+
+        # Afficher la boîte de dialogue
+        self.confirmation_dialog.show()
+
+    def delete_building(self, building_id):
+
+        user_id = get_current_user_id()
+        if not user_id:
+            QMessageBox.critical(self, "Erreur", "Aucun utilisateur connecté ou session expirée.")
+            return
+
+        owner = self.database["Owners"].find_one({"_id": user_id})
+
+        if not owner or "_buildings" not in owner:
+            QMessageBox.critical(self, "Erreur", "Impossible de trouver le propriétaire ou sa liste de bâtiments.")
+            return
+
+        # Supprimer le bâtiment de la liste des bâtiments du propriétaire
+        buildings = owner["_buildings"]
+        updated_buildings = [building for building in buildings if str(building["_id"]) != building_id]
+
+        # Mettre à jour la liste des bâtiments du propriétaire dans la base de données
+        self.database["Owners"].update_one({"_id": user_id}, {"$set": {"_buildings": updated_buildings}})
+
+        QMessageBox.information(self, "Succès", "Le bâtiment a été supprimé avec succès.")
+
     def show_principal(self):
         self.show()
 
@@ -667,6 +717,11 @@ class MainForm(QWidget):
 
     def switchToUpdate(self):
         self.switch_to_update.emit()
+
+    def handle_modify_button(self, building_id):
+        print("Bouton Modifier cliqué pour le bâtiment avec l'ID:", building_id)
+        self.update_menu = UpdateBuildingMenu(building_id)
+        self.update_menu.show()
 
     def switchToUpdatePwd(self):
         self.switch_to_updatePwd.emit()

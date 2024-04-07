@@ -78,15 +78,12 @@
 
 
 from PyQt6.QtWidgets import QApplication
-from formulaire2 import Formulaire
-from formulaireConnexion import ConnexionMenu
-from interfaces.afficherChambre import AfficherRoomMenu
-from interfaces.changePwd import ChangePwdMenu
-from interfaces.createBuilding import CreateBuildingMenu
-from interfaces.createRoom import CreateRoomMenu
+from interfaces.owner_interface.formulaire2 import Formulaire
+from interfaces.owner_interface.formulaireConnexion import ConnexionMenu
+from interfaces.owner_interface.changePwd import ChangePwdMenu
+from interfaces.building_interface.createBuilding import CreateBuildingMenu
 from interfaces.mainForm import MainForm
-from interfaces.updateForm import UpdateMenu
-from model.Building import Building
+from interfaces.owner_interface.updateForm import UpdateMenu
 
 if __name__ == "__main__":
     app = QApplication([])

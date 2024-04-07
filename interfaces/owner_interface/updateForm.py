@@ -88,6 +88,7 @@ class UpdateMenu(QWidget):
         prenom = self.prenom_input.text()
         email = self.email_input.text()
         numero = self.numero_input.text()
+
         user_id = get_current_user_id()
         owners_collection = self.database["Owners"]
         owner = owners_collection.find_one({"_id": user_id})
@@ -113,7 +114,7 @@ class UpdateMenu(QWidget):
                 owner["_email"] = email
 
             # Mettez ici votre code pour mettre à jour les données de l'objet Owner dans la base de données
-            owners_collection.update_one({"_id": "2c31634f-8b10-4886-88ce-56fb637a26c5"}, {"$set": owner})
+            owners_collection.update_one({"_id": user_id}, {"$set": owner})
 
             # Afficher un message de réussite à l'écran
             QMessageBox.information(self, "Succès", "Les données ont été mises à jour avec succès.")

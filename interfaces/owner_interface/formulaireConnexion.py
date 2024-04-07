@@ -3,7 +3,7 @@ from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal
 import pymongo
-from interfaces.formulaire2 import Formulaire
+from interfaces.owner_interface.formulaire2 import Formulaire
 
 
 from session.session_manager import update_user_session

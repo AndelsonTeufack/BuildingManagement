@@ -3,7 +3,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QApplication, QMessageBox
 
-from interfaces.afficherChambre import AfficherRoomMenu
+from interfaces.room_interface.afficherChambre import AfficherRoomMenu
 from model.Building import Building
 from model.Room import Room
 
