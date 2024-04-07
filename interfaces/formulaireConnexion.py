@@ -6,6 +6,9 @@ import pymongo
 from interfaces.formulaire2 import Formulaire
 
 
+from session.session_manager import update_user_session
+
+
 class ConnexionMenu(QWidget):
     switch_to_formulaire = pyqtSignal()
     switch_to_principal = pyqtSignal()
@@ -99,8 +102,8 @@ class ConnexionMenu(QWidget):
 
         QMessageBox.information(self, "Succès", "Connexion Établie!")
         self.close()  # Fermer la fenêtre d'inscription
-
-        self.switch_to_principal.emit()  # Émettre le signal pour passer à la fenêtre de connexion
+        update_user_session(owner["_id"])
+        self.switch_to_principal.emit()  # Émettre le signal pour passer à la fenêtre de principale
 
     def show_connexion(self):
         self.show()

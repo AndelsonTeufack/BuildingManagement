@@ -10,6 +10,8 @@ from model.Building import Building
 from model.Owner import Owner
 import json
 
+from session.session_manager import get_current_user_id
+
 
 class CreateBuildingMenu(QWidget):
 
@@ -89,8 +91,8 @@ class CreateBuildingMenu(QWidget):
             return
 
         owners_collection = self.database["Owners"]
-        # Récupérer le propriétaire depuis la base de données
-        owner_document = owners_collection.find_one({"_id": "2c31634f-8b10-4886-88ce-56fb637a26c5"})
+        user_id = get_current_user_id()
+        owner_document = owners_collection.find_one({"_id": user_id})
 
         if owner_document:
             owner = Owner.from_dict(owner_document)  # Convertir le document en instance de propriétaire
@@ -108,7 +110,7 @@ class CreateBuildingMenu(QWidget):
 
             # Mettre à jour le propriétaire dans la base de données en utilisant l'opérateur $set
             owners_collection.update_one(
-                {"_id": "2c31634f-8b10-4886-88ce-56fb637a26c5"},
+                {"_id": user_id},
                 {"$push": {"_buildings": building_dict}}
             )
             QMessageBox.information(self, "Succès", "Votre Cité a été créée avec succès.")

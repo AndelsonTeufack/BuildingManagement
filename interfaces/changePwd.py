@@ -5,6 +5,7 @@ from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout, QPushButton, QApplication, QMessageBox
 
 from interfaces.mainForm import MainForm
+from session.session_manager import get_current_user_id
 
 
 class ChangePwdMenu(QWidget):
@@ -82,8 +83,9 @@ class ChangePwdMenu(QWidget):
         new_pwd = self.nouveau_pwd_input.text()
         conf_new_pwd = self.confirm_nouveau_pwd_input.text()
 
+        user_id = get_current_user_id()
         owners_collection = self.database["Owners"]
-        owner = owners_collection.find_one({"_id": "2c31634f-8b10-4886-88ce-56fb637a26c5"})
+        owner = owners_collection.find_one({"_id": user_id})
 
         hashed_password = owner["_password"].encode('utf-8')
 

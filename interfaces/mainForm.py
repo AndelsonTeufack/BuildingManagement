@@ -3,11 +3,13 @@ import sys
 import pymongo
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QCursor
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QApplication, QGroupBox, QToolBar
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget, QHBoxLayout, QPushButton, QApplication, QToolBar, \
+    QMessageBox
 
+from MyEnum.AvailabilityStatus import AvailabilityStatus
 from interfaces.afficherChambre import AfficherRoomMenu
-from interfaces.formulaireConnexion import ConnexionMenu
 from model.Building import Building
+from session.session_manager import get_current_user_id, get_current_user_building_ids
 
 
 class MainForm(QWidget):
@@ -25,9 +27,6 @@ class MainForm(QWidget):
         self.setWindowTitle("Gestionnaire de Bâtiments Étudiants")
         self.setGeometry(220, 100, 900, 600)
         self.setStyleSheet("background-color: silver;")
-
-        self.connexion = ConnexionMenu()
-        self.connexion.switch_to_principal.connect(self.show_principal)
 
         self.client = pymongo.MongoClient("mongodb://localhost:27017/")
         self.database = self.client["buildManager"]
@@ -139,7 +138,11 @@ class MainForm(QWidget):
 
         # Récupérer les informations du compte de l'utilisateur depuis la base de données
         owners_collection = self.database["Owners"]
-        owner = owners_collection.find_one({"_id": "2c31634f-8b10-4886-88ce-56fb637a26c5"})
+        user_id = get_current_user_id()
+        owner = owners_collection.find_one({"_id": user_id})
+        if not user_id:
+            QMessageBox.critical(self, "Erreur", "Aucun utilisateur connecté ou session expirée.")
+            return
 
         nom = owner['_firstName']
         prenom = owner['_lastName']
@@ -298,15 +301,13 @@ class MainForm(QWidget):
         self.central_layout.addWidget(navigation_bar)
 
         # Récupérer les IDs des bâtiments appartenant à l'owner
-        owner = self.database["Owners"].find_one({"_id": "2c31634f-8b10-4886-88ce-56fb637a26c5"})
+        user_id = get_current_user_id()
+        owner = self.database["Owners"].find_one({"_id": user_id})
         building_dicts = owner["_buildings"]
-        buildings = [Building.from_dict(building_dict) for building_dict in building_dicts]  # Convertir en instances de Building
-
-        # building_ids = [building.id for building in buildings]  # Obtenir les IDs des bâtiments
-        # Récupérer tous les bâtiments correspondants en une seule requête
-        # buildings = self.database["Buildings"].find({"_id": {"$in": building_ids}})
-
-        # Créer un QVBoxLayout pour afficher les informations des bâtiments
+        buildings = [Building.from_dict(building_dict) for building_dict in
+                     building_dicts]  # Convertir en instances de Building
+        if not buildings:
+            QMessageBox.information(self, "Info", "Vous n'avez pas de cité pour le moment")
         buildings_layout = QVBoxLayout()
 
         for i, building in enumerate(buildings):
@@ -370,7 +371,7 @@ class MainForm(QWidget):
 
             # Créer les boutons Modifier et Supprimer
             self.room_interface = AfficherRoomMenu(building)
-            
+
             chambre_button = QPushButton("Chambres")
             chambre_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
             chambre_button.clicked.connect(self.display_rooms)
@@ -442,48 +443,47 @@ class MainForm(QWidget):
 
     def show_rooms(self):
         self.clear_central_layout()
-        self.clear_central_layout()
 
         # Créer une barre de navigation
         navigation_bar = QToolBar()
         navigation_bar.setStyleSheet("""
-                    QToolBar {
-                        background-color: #d3d3d3;
-                        padding: 5px;
-                    }
-                """)
+                   QToolBar {
+                       background-color: #d3d3d3;
+                       padding: 5px;
+                   }
+               """)
 
         # Ajouter le texte "Mes cités" au widget conteneur
-        title_label = QLabel("Mes Cités")
+        title_label = QLabel("Mes Chambres")
         title_label.setStyleSheet("""
-                    QLabel {
-                        font-size: 24px;
-                        font-family: Algerian;
-                        color: green;
-                        margin: 0px;
-                        background-color: #d3d3d3;
-                        border: none;
-                    }
-                """)
+                   QLabel {
+                       font-size: 24px;
+                       font-family: Algerian;
+                       color: green;
+                       margin: 0px;
+                       background-color: #d3d3d3;
+                       border: none;
+                   }
+               """)
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        creer_button = QPushButton("Ajouter Une Cité")
+        creer_button = QPushButton("Ajouter Une Chambre")
         creer_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        creer_button.clicked.connect(self.switchToCreateBl)
+        # creer_button.clicked.connect(self.switchToCreateBl)
         creer_button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #008000;
-                        color: white;
-                        font-size: 16px;
-                        height: 30px;
-                        width: 130px;
-                        margin-left: 580px;
-                        border-radius: 15px;
-                    }
-                    QPushButton:hover {
-                        background-color: orange;
-                    }
-                """)
+                   QPushButton {
+                       background-color: #008000;
+                       color: white;
+                       font-size: 16px;
+                       height: 30px;
+                       width: 170px;
+                       margin-left: 500px;
+                       border-radius: 15px;
+                   }
+                   QPushButton:hover {
+                       background-color: orange;
+                   }
+               """)
 
         # Ajouter le widget à la barre de navigation
         navigation_bar.addWidget(title_label)
@@ -492,10 +492,158 @@ class MainForm(QWidget):
         # Ajouter la barre de navigation à la mise en page centrale
         self.central_layout.addWidget(navigation_bar)
 
+        # Récupérer les IDs des bâtiments appartenant à l'owner
+        building_ids = get_current_user_building_ids()
+        rooms = self.get_rooms_for_building_ids(building_ids)
 
+        if not rooms:
+            QMessageBox.information(self, "Info", "Vous n'avez pas de chambre pour le moment")
+        buildings_layout = QVBoxLayout()
 
+        for i, room in enumerate(rooms):
+            # Utiliser directement l'objet building récupéré de la base de données
+            # pour accéder à ses propriétés et créer les widgets correspondants
+            titleLabel = QLabel("Chambre: " + str(i + 1))
+            titleLabel.setStyleSheet(
+                "font-weight: bold; text-transform: uppercase; font-size: 22px; font-family: times;")
 
+            number_label = QLabel("Numbre: " + room.number)
+            number_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
 
+            price_label = QLabel("Prix: " + room.price + " FCFA")
+            price_label.setStyleSheet("color: blue; font-weight: bold; font-size: 18px;")
+
+            description_label = QLabel("Description: " + room.description)
+            description_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
+
+            status_label = QLabel("Statut de disponibilité: " + room.availabilityStatus)
+            status_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
+
+            # Ajouter les widgets QLabel au QVBoxLayout des informations du bâtiment
+            info_layout = QVBoxLayout()
+            info_layout.addWidget(titleLabel)
+            info_layout.addWidget(number_label)
+            info_layout.addWidget(price_label)
+            info_layout.addWidget(description_label)
+            info_layout.addWidget(status_label)
+
+            if room.availabilityStatus == AvailabilityStatus.RESERVED:
+                if room.amountAdvanced is not None:
+                    montantAdv_label = QLabel("Montant avancé: " + room.amountAdvanced)
+                    montantAdv_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
+                    info_layout.addWidget(montantAdv_label)
+                if room.leftToPay is not None:
+                    resteapayer_label = QLabel("Reste à payer: " + room.leftToPay)
+                    resteapayer_label.setStyleSheet("font-weight: bold; text-transform: uppercase; font-size: 18px;")
+                    info_layout.addWidget(resteapayer_label)
+
+            # Créer un QHBoxLayout pour les boutons
+            button_layout = QHBoxLayout()
+
+            # Créer les boutons Modifier et Supprimer
+            modifier_button = QPushButton("Modifier")
+            modifier_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            # modifier_button.clicked.connect(self.switchToUpdate)
+            modifier_button.setStyleSheet("""
+                       QPushButton {
+                           background-color: orange;
+                           color: white;
+                           font-size: 16px;
+                           height: 35px;
+                           border-radius: 15px;
+                       }
+                       QPushButton:hover {
+                           background-color: #ff8c00;
+                       }
+                   """)
+
+            changer_mdp_button = QPushButton("Supprimer")
+            changer_mdp_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            # changer_mdp_button.clicked.connect(self.switch_to_updatePwd)
+            changer_mdp_button.setStyleSheet("""
+                       QPushButton {
+                           background-color: gray;
+                           color: white;
+                           font-size: 16px;
+                           height: 35px;
+                           border-radius: 15px;
+                       }
+                       QPushButton:hover {
+                           background-color: #707070;
+                       }
+                   """)
+
+            # Créer les boutons Modifier et Supprimer
+            self.room_interface = AfficherRoomMenu(room)
+
+            proprietaire_button = QPushButton("Proprietaire")
+            proprietaire_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            # proprietaire_button.clicked.connect(self.display_rooms)
+            proprietaire_button.setStyleSheet("""
+                                   QPushButton {
+                                       background-color: #008000;
+                                       color: white;
+                                       font-size: 16px;
+                                       height: 35px;
+                                       border-radius: 15px;
+                                   }
+                                   QPushButton:hover {
+                                       background-color: orange;
+                                   }
+                               """)
+
+            # Ajouter les boutons au QHBoxLayout des boutons
+            button_layout.addWidget(modifier_button)
+            button_layout.addWidget(changer_mdp_button)
+            button_layout.addWidget(proprietaire_button)
+
+            # Créer un QVBoxLayout pour la disposition horizontale
+            main_layout = QHBoxLayout()
+
+            # Ajouter le QVBoxLayout des informations du bâtiment à gauche
+            info_widget = QWidget()
+            info_widget.setLayout(info_layout)
+            info_widget.setStyleSheet("""
+           ```python
+                       QWidget {
+                           background-color: #f0f0f0;
+                           border: 2px solid #d3d3d3;
+                           padding-right: 10px;
+                       }
+                   """)
+            main_layout.addWidget(info_widget)
+
+            # Ajouter le QHBoxLayout des boutons à droite
+            button_widget = QWidget()
+            button_widget.setLayout(button_layout)
+            button_widget.setStyleSheet("""
+                       QWidget {
+                           background-color: #ffffff;
+                           padding-left: 30px;
+                           border: 2px solid #ffffff;
+                       }
+                   """)
+            main_layout.addWidget(button_widget)
+
+            # Ajouter le QHBoxLayout à la mise en page centrale
+            main_widget = QWidget()
+            main_widget.setLayout(main_layout)
+            main_widget.setStyleSheet("""
+                       QWidget {
+                           background-color: #ffffff;
+                           border: 2px solid #ffffff;
+                       }
+                   """)
+
+            # Ajouter le QWidget du bâtiment au QVBoxLayout des bâtiments
+            buildings_layout.addWidget(main_widget)
+
+        # Ajouter le QVBoxLayout des bâtiments à la mise en page centrale
+        self.central_layout.addLayout(buildings_layout)
+
+        # Rafraîchir la mise en page centrale
+        self.central_layout.update()
+        self.central_widget.update()
 
     def show_rooms_of_building(self, building_id):
         # Cette fonction n'est pas implémentée dans votre code d'origine
@@ -505,9 +653,11 @@ class MainForm(QWidget):
     def clear_central_layout(self):
         # Effacer tous les widgets de la zone centrale
         while self.central_layout.count():
-            widget = self.central_layout.takeAt(0)
-            if widget is not None:
-                widget.widget().deleteLater()
+            widget_item = self.central_layout.takeAt(0)
+            if widget_item is not None:
+                widget = widget_item.widget()
+                if widget is not None:
+                    widget.deleteLater()
 
     def show_principal(self):
         self.show()
@@ -527,6 +677,29 @@ class MainForm(QWidget):
     def display_rooms(self):
         # Affichez l'interface des chambres
         self.room_interface.show()
+
+    def get_rooms_for_building_ids(self, building_ids):
+        rooms = []  # Cette liste va stocker les chambres de tous les bâtiments
+
+        for building_id in building_ids:
+            # Supposons que tu aies une méthode ou une fonction pour récupérer un bâtiment par son ID
+            building = self.get_building_by_id(building_id)
+
+            # Vérifie si le bâtiment a des chambres listées
+            if building and building._rooms:
+                # Étend la liste des chambres avec les chambres de ce bâtiment
+                rooms.extend(building._rooms)
+
+        return rooms
+
+    def get_building_by_id(self, building_id):
+        # Utilise la collection de bâtiments pour récupérer le document correspondant
+        building_dict = self.database["Buildings"].find_one({"_id": building_id})
+        if building_dict:
+            # Convertit le dictionnaire en objet Building
+            return Building.from_dict(building_dict)
+        else:
+            return None
 
 
 if __name__ == "__main__":

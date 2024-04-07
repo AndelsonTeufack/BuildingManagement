@@ -10,12 +10,12 @@ from model.Room import Room
 
 class CreateRoomMenu(QWidget):
 
-    def __init__(self, building):
+    def __init__(self):
         super().__init__()
         self.setWindowTitle("Créer chambre")
         self.setGeometry(380, 200, 400, 300)
         self.setStyleSheet("background-color: silver;")
-        self.building = building
+        self.building = None
 
         self.afficherRooMenu = AfficherRoomMenu(self.building)
         self.afficherRooMenu.switch_to_addRoom.connect(self.showRoomMenu)
